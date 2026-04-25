@@ -4,7 +4,7 @@ Dispatch Equity Simulator is a browser-based ethics simulation about autonomous 
 
 ## Live site
 
-Planned public URL: `https://evan-kusa.github.io/dispatch-equity-simulator/`
+Public URL: `https://evan-kusa.github.io/dispatch-equity-simulator/`
 
 ## Local use
 
