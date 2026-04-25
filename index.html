@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dispatch Equity Simulator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-primary: #0a0c10;
+  --bg-secondary: #12151c;
+  --bg-tertiary: #1a1e28;
+  --bg-card: #161a24;
+  --border: #252a36;
+  --border-active: #3a4050;
+  --text-primary: #e8eaf0;
+  --text-secondary: #8b90a0;
+  --text-muted: #555a6a;
+  --accent-blue: #4a9eff;
+  --accent-green: #34d399;
+  --accent-red: #f87171;
+  --accent-amber: #fbbf24;
+  --accent-purple: #a78bfa;
+  --accent-cyan: #22d3ee;
+}
+
+html { font-size: 14px; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+@keyframes barGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.header-left h1 {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+.header-left h1 span { color: var(--accent-blue); }
+.header-left p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  max-width: 500px;
+  line-height: 1.5;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.disparity-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 10px 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 160px;
+}
+.disparity-badge .label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+}
+.disparity-badge .value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.8rem;
+  font-weight: 500;
+  line-height: 1.2;
+  transition: color 0.3s;
+}
+
+/* Layout */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+}
+
+/* Control Panel */
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.control-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.control-card h3 {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.slider-group { margin-bottom: 14px; }
+.slider-group:last-child { margin-bottom: 0; }
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.slider-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.slider-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  min-width: 32px;
+  text-align: right;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+  border: 2px solid var(--bg-primary);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+  transition: transform 0.15s;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  cursor: pointer;
+  border: 2px solid var(--bg-primary);
+}
+
+.slider-blue { background: linear-gradient(90deg, var(--accent-blue) var(--fill), var(--border) var(--fill)); }
+.slider-green { background: linear-gradient(90deg, var(--accent-green) var(--fill), var(--border) var(--fill)); }
+.slider-amber { background: linear-gradient(90deg, var(--accent-amber) var(--fill), var(--border) var(--fill)); }
+.slider-purple { background: linear-gradient(90deg, var(--accent-purple) var(--fill), var(--border) var(--fill)); }
+
+/* Presets */
+.presets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.preset-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+.preset-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-active);
+  color: var(--text-primary);
+}
+.preset-btn.active {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+  background: rgba(74, 158, 255, 0.05);
+}
+.preset-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Main content */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* City Grid */
+.city-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.city-container h3 {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.city-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 10px;
+  min-height: 220px;
+}
+.neighborhood {
+  position: relative;
+  border-radius: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.4s ease;
+  overflow: hidden;
+  cursor: default;
+}
+.neighborhood::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 8px 8px 0 0;
+  transition: background 0.4s;
+}
+.neighborhood .name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.neighborhood .traits {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.neighborhood .wait-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 8px;
+}
+.neighborhood .wait-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: 500;
+  transition: color 0.4s;
+}
+.neighborhood .wait-unit {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.neighborhood .service-bar-track {
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.neighborhood .service-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease, background 0.4s;
+}
+.neighborhood .deliveries {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.neighborhood .bio-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-active);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 10;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.neighborhood:hover .bio-tooltip { opacity: 1; }
+.neighborhood .bio-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--border-active);
+}
+
+/* Bio cards in narrative */
+.bio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 24px 0 8px;
+}
+.bio-card {
+  padding: 12px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-left: 3px solid;
+  border-radius: 6px;
+}
+.bio-card .bio-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.bio-card .bio-stats {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+.bio-card .bio-text {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+/* Stats Row */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.stat-card .stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.stat-card .stat-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.stat-card .stat-sub {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Bar Chart */
+.chart-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+}
+.chart-container h3 {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 160px;
+  padding-top: 10px;
+}
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+.bar-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+.bar-track {
+  width: 100%;
+  max-width: 56px;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.6s ease, background 0.4s;
+  position: relative;
+}
+.bar-name {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  text-align: center;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70px;
+}
+
+/* Insight Panel */
+.insight-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  border-left: 3px solid var(--accent-blue);
+}
+.insight-panel .insight-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-blue);
+  margin-bottom: 8px;
+}
+.insight-panel p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+.insight-panel em {
+  color: var(--text-primary);
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* Footer */
+.footer {
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.footer p {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+}
+.footer a { color: var(--accent-blue); text-decoration: none; }
+.footer a:hover { text-decoration: underline; }
+
+/* Narrative Intro */
+.narrative {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 120px 20px 40px;
+}
+.narrative-hero {
+  text-align: center;
+  margin-bottom: 100px;
+}
+.narrative-hero h1 {
+  font-family: 'DM Mono', monospace;
+  font-size: 2.4rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+.narrative-hero h1 span { color: var(--accent-blue); }
+.narrative-hero .hook {
+  font-size: 1.15rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  max-width: 480px;
+  margin: 0 auto 24px;
+}
+.narrative-hero .meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.scroll-hint {
+  margin-top: 48px;
+  animation: pulse 2s ease-in-out infinite;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: 'DM Mono', monospace;
+}
+.scroll-hint::after {
+  content: '↓';
+  display: block;
+  font-size: 1.2rem;
+  margin-top: 4px;
+}
+.narrative-section {
+  margin-bottom: 72px;
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.narrative-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.narrative-section h2 {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-blue);
+  margin-bottom: 18px;
+}
+.narrative-section p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  line-height: 1.85;
+  margin-bottom: 18px;
+}
+.narrative-section p:last-child { margin-bottom: 0; }
+.narrative-section em {
+  color: var(--text-primary);
+  font-style: normal;
+  font-weight: 500;
+}
+.narrative-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+}
+.narrative-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.narrative-table td {
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+.narrative-table .hl { color: var(--text-primary); font-weight: 500; }
+.narrative-table .cost { color: var(--accent-amber); }
+.narrative-divider {
+  text-align: center;
+  padding: 40px 0 0;
+  margin-bottom: 0;
+}
+.narrative-divider .rule {
+  width: 40px;
+  height: 1px;
+  background: var(--border-active);
+  margin: 0 auto 24px;
+}
+.narrative-divider p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .city-grid { grid-template-columns: repeat(2, 1fr); }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .bar-chart { height: 120px; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useCallback, useRef, useEffect } = React;
+
+// --- DATA ---
+const NEIGHBORHOODS = [
+  { id: 'downtown', name: 'Downtown Core', density: 14200, income: 55000, baseDemand: 50, distance: 1.5, color: '#4a9eff',
+    blurb: 'Office towers, food carts, the main subway interchange.',
+    bio: 'Office towers and food carts. The city\'s main subway interchange runs underneath, so a big chunk of the population is just passing through on any given day. Highest delivery volume in the city; most of it small orders to walk-up apartments above retail.' },
+  { id: 'midtown', name: 'Midtown', density: 9800, income: 72000, baseDemand: 38, distance: 3.2, color: '#22d3ee',
+    blurb: 'Renovated brownstones, two-income professional families.',
+    bio: 'Renovated brownstones and brunch lines on weekends. Two-income professional families who order delivery a few nights a week. Stable demand, and the residents have enough connections at city hall to complain loudly when service drops.' },
+  { id: 'university', name: 'University Dist.', density: 11500, income: 32000, baseDemand: 32, distance: 2.8, color: '#a78bfa',
+    blurb: 'Students and adjuncts. Lots of orders, small ones.',
+    bio: 'Students and adjuncts in triplexes that have been chopped into apartments. Median income reads low because half the residents are 19. Demand is huge because nobody here cooks, but orders are small and tips are smaller.' },
+  { id: 'westside', name: 'Westside', density: 6200, income: 125000, baseDemand: 30, distance: 5.1, color: '#34d399',
+    blurb: 'Gated streets, big order values, no real need for delivery.',
+    bio: 'Gated cul-de-sacs and three-car garages. Tech and finance money. Large order values and expensive grocery preferences. Nobody here would suffer if drone delivery disappeared tomorrow; it would just be inconvenient.' },
+  { id: 'industrial', name: 'Industrial Park', density: 2100, income: 48000, baseDemand: 10, distance: 7.5, color: '#fbbf24',
+    blurb: 'Warehouses and a diner. Mostly daytime demand.',
+    bio: 'Warehouses, a truck stop, and the diner. Daytime population around 30k, residential population around 2k. Most of the delivery demand is restocks for the lunch counter, not households.' },
+  { id: 'eastview', name: 'Eastview', density: 3800, income: 34000, baseDemand: 14, distance: 8.2, color: '#fb923c',
+    blurb: 'Older working-class neighborhood. Bus runs once an hour.',
+    bio: 'Older single family homes, mostly working class, mostly older residents. The post office is closing and the bus runs once an hour. For the people here who cannot drive, delivery is how groceries and prescriptions actually arrive.' },
+  { id: 'northgate', name: 'Northgate', density: 4500, income: 95000, baseDemand: 18, distance: 6.8, color: '#f472b6',
+    blurb: 'Hillside subdivisions. Few orders but big ones.',
+    bio: 'Newer hillside subdivisions. Doctors, lawyers, and retirees with long driveways. Low density, high income; the order volume is small but the per-order revenue is high enough to cover the trip out.' },
+  { id: 'southend', name: 'Southend', density: 2800, income: 22000, baseDemand: 8, distance: 11.0, color: '#f87171',
+    blurb: 'Poorest in the city. Highest crime. No grocery for two miles.',
+    bio: 'The farthest neighborhood from the depot and the poorest in the city. Violent crime rate is the highest in the metro. No full service grocery within two miles. The major delivery apps already redline it. So this is the neighborhood where delivery would matter most, and where every optimizer in this simulator will reach for it last.' },
+];
+
+const FLEET_SIZE = 32;
+const BASE_TRIP_TIME = 2; // minutes per delivery base
+const MAX_WAIT = 120;
+const BASE_AGENT_COST = 20;       // $/hr per agent (depreciation, insurance, base energy)
+const DISTANCE_COST_RATE = 4;     // $/mi/hr (fuel, linear wear per mile)
+const BREAKDOWN_COST_RATE = 0.6;  // $/mi²/hr (reliability degradation, quadratic with distance)
+const PRIORITY_BUDGET = 100;      // total points to allocate across priorities
+
+const PRESETS = [
+  { name: 'Pure Efficiency', desc: 'Pack the fleet near the depot', weights: { speed: 55, throughput: 35, profit: 10, equity: 0 }, color: '#4a9eff' },
+  { name: 'Profit Maximizer', desc: 'Pure profit. Abandons what it has to.', weights: { speed: 0, throughput: 0, profit: 100, equity: 0 }, color: '#fbbf24' },
+  { name: 'Equal Service', desc: 'Same drones for every neighborhood', weights: { speed: 0, throughput: 0, profit: 0, equity: 100 }, color: '#34d399' },
+  { name: 'Balanced', desc: 'Trade some profit for less inequality', weights: { speed: 24, throughput: 14, profit: 14, equity: 48 }, color: '#a78bfa' },
+];
+
+// --- SIMULATION ENGINE ---
+function calculateGini(values) {
+  const mean = values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
+  if (mean === 0) return 0;
+
+  let totalDiff = 0;
+  values.forEach(a => {
+    values.forEach(b => {
+      totalDiff += Math.abs(a - b);
+    });
+  });
+  return totalDiff / (2 * values.length * values.length * mean);
+}
+
+function simulate(weights) {
+  const { speed, throughput, profit, equity } = weights;
+  const totalWeight = Math.max(speed + throughput + profit + equity, 1);
+  const wS = speed / totalWeight;
+  const wT = throughput / totalWeight;
+  const wP = profit / totalWeight;
+  const wE = equity / totalWeight;
+
+  // Compute raw priority score per neighborhood
+  const maxDist = Math.max(...NEIGHBORHOODS.map(n => n.distance));
+  const maxDemand = Math.max(...NEIGHBORHOODS.map(n => n.baseDemand));
+
+  // Per-agent expected margin: revenue/hr − cost/hr if the agent is fully utilized.
+  // Negative margins (distance cost dominates revenue) clamp to 0 so the profit
+  // objective never argues for sending more drones to a money-losing area.
+  const marginFor = (n) => {
+    const tripTime = BASE_TRIP_TIME + (n.distance * 2.0);
+    const deliveriesPerAgent = 60 / tripTime;
+    const revPerAgent = deliveriesPerAgent * Math.pow(n.income / 10000, 1.6);
+    const costPerAgent = BASE_AGENT_COST + (n.distance * DISTANCE_COST_RATE) + (Math.pow(n.distance, 2) * BREAKDOWN_COST_RATE);
+    return Math.max(revPerAgent - costPerAgent, 0);
+  };
+  const maxMargin = Math.max(...NEIGHBORHOODS.map(marginFor), 1);
+
+  let scores = NEIGHBORHOODS.map(n => {
+    const proximityScore = Math.pow(1 - (n.distance / maxDist), 2);
+    const demandScore = Math.pow(n.baseDemand / maxDemand, 1.5);
+    const profitScore = Math.pow(marginFor(n) / maxMargin, 1.5);
+
+    const rawScore = wS * proximityScore + wT * demandScore + wP * profitScore;
+    return { ...n, rawScore, proximityScore, demandScore, profitScore };
+  });
+
+  // Equity redistribution: blend toward equal allocation
+  const equalScore = 1 / scores.length;
+  if (wE > 0) {
+    scores = scores.map(n => ({
+      ...n,
+      adjustedScore: n.rawScore * (1 - wE) + equalScore * wE
+    }));
+  } else {
+    scores = scores.map(n => ({ ...n, adjustedScore: n.rawScore }));
+  }
+
+  // Normalize and allocate fleet
+  const totalAdj = scores.reduce((s, n) => s + n.adjustedScore, 0);
+  let results;
+  if (Number.isFinite(totalAdj) && totalAdj > 0) {
+    results = scores.map(n => {
+      const allocation = Math.round((n.adjustedScore / totalAdj) * FLEET_SIZE);
+      return { ...n, allocation };
+    });
+  } else {
+    const baseAllocation = Math.floor(FLEET_SIZE / scores.length);
+    const remainder = FLEET_SIZE % scores.length;
+    results = scores.map((n, idx) => ({
+      ...n,
+      allocation: baseAllocation + (idx < remainder ? 1 : 0),
+    }));
+  }
+
+  // Clamp total allocation to fleet size
+  let totalAlloc = results.reduce((s, n) => s + n.allocation, 0);
+  while (totalAlloc > FLEET_SIZE) {
+    // Remove from most-allocated; tie-break by lowest score
+    const maxA = Math.max(...results.filter(n => n.allocation > 0).map(n => n.allocation));
+    const ties = results.filter(n => n.allocation === maxA);
+    const pick = ties.reduce((min, n) => n.adjustedScore < min.adjustedScore ? n : min, ties[0]);
+    pick.allocation--;
+    totalAlloc--;
+  }
+  while (totalAlloc < FLEET_SIZE) {
+    // Add to least-allocated; tie-break by highest score
+    const minA = Math.min(...results.map(n => n.allocation));
+    const ties = results.filter(n => n.allocation === minA);
+    const pick = ties.reduce((max, n) => n.adjustedScore > max.adjustedScore ? n : max, ties[0]);
+    pick.allocation++;
+    totalAlloc++;
+  }
+
+  // Cap allocations at demand-useful capacity, redistribute excess by score.
+  // Sending more drones than a neighborhood can absorb is pure waste and would
+  // make the profit objective look worse than it actually is.
+  const capFor = (n) => {
+    const tripTime = BASE_TRIP_TIME + (n.distance * 2.0);
+    const deliveriesPerAgent = 60 / tripTime;
+    return Math.max(1, Math.ceil(n.baseDemand / deliveriesPerAgent) + 1);
+  };
+  const caps = results.map(capFor);
+  for (let pass = 0; pass < 16; pass++) {
+    let excess = 0;
+    results.forEach((n, i) => {
+      if (n.allocation > caps[i]) {
+        excess += n.allocation - caps[i];
+        n.allocation = caps[i];
+      }
+    });
+    if (excess === 0) break;
+    let placed = false;
+    while (excess > 0) {
+      const eligible = results
+        .map((n, i) => ({ n, room: caps[i] - n.allocation }))
+        .filter(x => x.room > 0)
+        .sort((a, b) => b.n.adjustedScore - a.n.adjustedScore);
+      if (eligible.length === 0) break;
+      eligible[0].n.allocation++;
+      excess--;
+      placed = true;
+    }
+    if (!placed) break;
+  }
+
+  // Compute metrics
+  results = results.map(n => {
+    const abandoned = n.allocation === 0;
+    const serviceRate = n.allocation / Math.max(n.baseDemand, 1);
+    const travelTime = BASE_TRIP_TIME + (n.distance * 2.0);
+    // Wait grows as serviceRate falls; clamp to MAX_WAIT for display sanity.
+    // Abandoned neighborhoods have no meaningful wait—flagged separately so the
+    // Worst Wait stat doesn't collapse to the cap on every preset.
+    const avgWait = abandoned ? MAX_WAIT : Math.min(travelTime / Math.max(serviceRate, 0.05), MAX_WAIT);
+    const deliveriesPerHour = Math.min(n.baseDemand, n.allocation * (60 / travelTime));
+    const revenuePerHour = deliveriesPerHour * Math.pow(n.income / 10000, 1.6);
+    const costPerAgentHr = BASE_AGENT_COST + (n.distance * DISTANCE_COST_RATE) + (Math.pow(n.distance, 2) * BREAKDOWN_COST_RATE);
+    const costPerHour = costPerAgentHr * n.allocation;
+    const profitPerHour = revenuePerHour - costPerHour;
+
+    return {
+      ...n,
+      abandoned,
+      serviceRate: Math.min(serviceRate, 1),
+      avgWait,
+      deliveriesPerHour: Math.round(deliveriesPerHour * 10) / 10,
+      revenuePerHour: Math.round(revenuePerHour * 10) / 10,
+      costPerHour: Math.round(costPerHour * 10) / 10,
+      profitPerHour: Math.round(profitPerHour * 10) / 10,
+    };
+  });
+
+  const served = results.filter(r => !r.abandoned);
+  const abandonedNeighborhoods = results.filter(r => r.abandoned);
+  const servedWaits = served.map(r => r.avgWait);
+  const allWaits = results.map(r => r.avgWait);
+  const minWait = servedWaits.length > 0 ? Math.min(...servedWaits) : 0;
+  const worstServedWait = servedWaits.length > 0 ? Math.max(...servedWaits) : 0;
+  const maxWait = Math.max(...allWaits, 0);
+  // Both avgWait and inequality are computed on served neighborhoods only, so
+  // the bar chart, cards, and headline metrics tell a consistent story.
+  // Abandonment is reported as its own dimension—it isn't inequality among the
+  // served, it's exclusion from the system.
+  const servedDemand = served.reduce((sum, r) => sum + r.baseDemand, 0);
+  const avgWait = servedDemand > 0
+    ? served.reduce((sum, r) => sum + (r.avgWait * r.baseDemand), 0) / servedDemand
+    : 0;
+  const waitRatio = minWait > 0 ? worstServedWait / minWait : worstServedWait;
+  const inequality = calculateGini(servedWaits.length > 0 ? servedWaits : [0]);
+  const totalDeliveries = results.reduce((s, r) => s + r.deliveriesPerHour, 0);
+  const totalRevenue = results.reduce((s, r) => s + r.revenuePerHour, 0);
+  const totalCost = results.reduce((s, r) => s + r.costPerHour, 0);
+  const totalProfit = totalRevenue - totalCost;
+  const abandonedCount = abandonedNeighborhoods.length;
+  const abandonedNames = abandonedNeighborhoods.map(r => r.name);
+
+  return {
+    results, inequality, waitRatio, avgWait, totalDeliveries, totalRevenue,
+    totalCost, totalProfit, maxWait, worstServedWait, abandonedCount, abandonedNames,
+  };
+}
+
+function getWaitColor(wait, maxWait) {
+  const t = Math.min(wait / Math.max(maxWait, 1), 1);
+  if (t < 0.33) return '#34d399';
+  if (t < 0.66) return '#fbbf24';
+  return '#f87171';
+}
+
+function getInequalityColor(score) {
+  if (score < 0.15) return 'var(--accent-green)';
+  if (score < 0.35) return 'var(--accent-amber)';
+  return 'var(--accent-red)';
+}
+
+function getInsight(weights, metrics, results) {
+  const { speed, throughput, profit, equity } = weights;
+  const worstNeighborhood = results.reduce((w, r) => r.avgWait > w.avgWait ? r : w, results[0]);
+  const bestNeighborhood = results.reduce((b, r) => r.avgWait < b.avgWait ? r : b, results[0]);
+  const inequalityPct = (metrics.inequality * 100).toFixed(1);
+  const waitRatio = metrics.waitRatio.toFixed(1);
+  const unprofitable = results.filter(r => r.profitPerHour < 0 && r.allocation > 0);
+  const biggestLoss = unprofitable.length > 0 ? unprofitable.reduce((w, r) => r.profitPerHour < w.profitPerHour ? r : w, unprofitable[0]) : null;
+
+  if (equity > 70 && metrics.inequality < 0.20) {
+    const lossText = unprofitable.length > 0
+      ? ` ${unprofitable.map(r => r.name).join(', ')} ${unprofitable.length === 1 ? 'runs' : 'run'} at a net loss; every drone there costs more than it earns, with the system absorbing about $${Math.abs(unprofitable.reduce((s, r) => s + r.profitPerHour, 0)).toFixed(0)}/hr in subsidies.`
+      : '';
+    return {
+      text: `Equity weighting is the dominant signal here. Wait inequality drops to ${inequalityPct}%, but net profit is only $${metrics.totalProfit.toFixed(0)}/hr after $${metrics.totalCost.toFixed(0)}/hr in operating cost.${lossText} Treating everyone's time as equally valuable is the Rawlsian move, and the bill arrives in the form of quadratic operating cost once you serve ${worstNeighborhood.distance}-mile neighborhoods at the same intensity as 1.5-mile ones. The honest question this preset puts on the table is not whether fairness is expensive. It is who pays for it.`,
+      framework: 'Distributive Justice (Rawls)'
+    };
+  }
+
+  if (profit > 70 && equity < 30) {
+    const zeroAgentAreas = results.filter(r => r.allocation === 0);
+    const abandonedText = zeroAgentAreas.length > 0
+      ? ` ${zeroAgentAreas.map(r => r.name).join(', ')} ${zeroAgentAreas.length === 1 ? 'gets' : 'get'} zero drones; the math just does not justify sending one.`
+      : '';
+    const equalityParadox = zeroAgentAreas.length > 0
+      ? ` Wait inequality across the served neighborhoods is ${inequalityPct}%, which makes the system look fair. It is not. The neighborhoods that would have shown the inequality have been removed from the calculation entirely.`
+      : ` Wait inequality reaches ${inequalityPct}%.`;
+    return {
+      text: `Profit maximization nets $${metrics.totalProfit.toFixed(0)}/hr on $${metrics.totalRevenue.toFixed(0)}/hr revenue, with $${metrics.totalCost.toFixed(0)}/hr going to operations. The drones cluster where per-agent margin is highest, which is either close and cheap or far and wealthy.${abandonedText}${equalityParadox} The optimizer is doing what it was told. Whether per-agent margin should be the thing it was told to maximize is the part you have to answer outside the model. The score reduces to whose deliveries are profitable enough to fulfill, and that is a value statement, not a technical one.`,
+      framework: 'Historical & Deployment Bias (Suresh & Guttag)'
+    };
+  }
+
+  if (speed > 70 && equity < 30) {
+    const zeroAgentAreas = results.filter(r => r.allocation === 0);
+    const abandonedText = zeroAgentAreas.length > 0
+      ? ` ${zeroAgentAreas.map(r => r.name).join(' and ')} ${zeroAgentAreas.length === 1 ? 'gets' : 'get'} no drones at all.`
+      : '';
+    return {
+      text: `Speed optimization holds the served-average wait at ${metrics.avgWait.toFixed(1)} minutes by packing the fleet near the depot. Operating cost stays low ($${metrics.totalCost.toFixed(0)}/hr), and the system nets $${metrics.totalProfit.toFixed(0)}/hr.${abandonedText} The metrics look good partly because they only count the neighborhoods that got drones. ${worstNeighborhood.name} at ${worstNeighborhood.distance} miles is not inefficient on this preset; it just is not in the picture.`,
+      framework: 'Utilitarian Optimization'
+    };
+  }
+
+  if (equity >= 20 && equity < 70) {
+    const lossText = unprofitable.length > 0
+      ? ` ${unprofitable.length} neighborhood${unprofitable.length > 1 ? 's operate' : ' operates'} at a loss, costing about $${Math.abs(unprofitable.reduce((s, r) => s + r.profitPerHour, 0)).toFixed(0)}/hr to subsidize.`
+      : '';
+    return {
+      text: `Some equity weighting partially redistributes service. Inequality sits at ${inequalityPct}%, profit drops to $${metrics.totalProfit.toFixed(0)}/hr (revenue $${metrics.totalRevenue.toFixed(0)}, operating cost $${metrics.totalCost.toFixed(0)}).${lossText} Every drone you send to a distant neighborhood costs more per hour to run, and is also a drone you cannot put somewhere profitable. There is no setting on this panel where fairness is free.`,
+      framework: 'Sociotechnical Trade-offs (Selbst et al.)'
+    };
+  }
+
+  return {
+    text: `This configuration nets $${metrics.totalProfit.toFixed(0)}/hr profit on $${metrics.totalRevenue.toFixed(0)}/hr revenue, with $${metrics.totalCost.toFixed(0)}/hr going to operating costs. ${worstNeighborhood.name} waits ${waitRatio}x longer than ${bestNeighborhood.name}, served-inequality is at ${inequalityPct}%. Every slider move changes who waits longer, who pays the operating cost, and who is excluded entirely. The defaults are not neutral. Neither is anything else you can move them to.`,
+    framework: 'Materializing Morality (Verbeek)'
+  };
+}
+
+// --- COMPONENTS ---
+function useInView() {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold: 0.15 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+  return [ref, inView];
+}
+
+function FadeIn({ children, className = 'narrative-section' }) {
+  const [ref, inView] = useInView();
+  return <div ref={ref} className={`${className} ${inView ? 'visible' : ''}`}>{children}</div>;
+}
+
+function NarrativeIntro() {
+  const sorted = [...NEIGHBORHOODS].sort((a, b) => a.distance - b.distance);
+  return (
+    <div className="narrative">
+      <div className="narrative-hero">
+        <h1><span>//</span> dispatch equity</h1>
+        <p className="hook">When an algorithm decides who gets served, it has already decided who matters.</p>
+        <p className="meta">Evan Kusa · Duke University · Ethics of Autonomous Systems · Spring 2026</p>
+        <div className="scroll-hint">scroll</div>
+      </div>
+
+      <FadeIn>
+        <h2>01 — The City</h2>
+        <p>A delivery platform operates <em>32 autonomous drones</em> across eight neighborhoods. The dispatch algorithm decides, every second, which areas get drones and which wait.</p>
+        <p>The engineers who wrote it had to pick what to optimize. Speed, profit, fairness; these do not reduce to the same answer. Whoever picks the default weights is making a moral choice on behalf of everyone the system serves, and everyone it does not.</p>
+      </FadeIn>
+
+      <FadeIn>
+        <h2>02 — The Geography</h2>
+        <p>The geography of this city is awkward. <em>The wealthy neighborhoods are far from the depot. The poor neighborhoods are close.</em> Optimizing for speed concentrates drones near the center, where residents happen to be poorer. Optimizing for profit picks whichever neighborhoods produce the best margin per drone, which can land on the wealthy suburbs or the cheap-to-reach core depending on how income and distance balance out in the math. There is no setting that does not take a side.</p>
+        <table className="narrative-table">
+          <thead><tr><th>Neighborhood</th><th>Distance</th><th>Income</th><th>Cost/Agent</th></tr></thead>
+          <tbody>
+            {sorted.map(n => {
+              const cost = BASE_AGENT_COST + n.distance * DISTANCE_COST_RATE + Math.pow(n.distance, 2) * BREAKDOWN_COST_RATE;
+              return (
+                <tr key={n.id}>
+                  <td className="hl">{n.name}</td>
+                  <td>{n.distance} mi</td>
+                  <td>${(n.income / 1000).toFixed(0)}k</td>
+                  <td className="cost">${cost.toFixed(0)}/hr</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </FadeIn>
+
+      <FadeIn>
+        <h2>03 — Meet the Neighborhoods</h2>
+        <p>The model sees each neighborhood as a row of numbers. That is not what they are. Short notes on each:</p>
+        <div className="bio-grid">
+          {NEIGHBORHOODS.map(n => (
+            <div key={n.id} className="bio-card" style={{ borderLeftColor: n.color }}>
+              <div className="bio-name">{n.name}</div>
+              <div className="bio-stats">${(n.income/1000).toFixed(0)}k · {n.distance}mi · {n.baseDemand} req/hr</div>
+              <div className="bio-text">{n.bio}</div>
+            </div>
+          ))}
+        </div>
+      </FadeIn>
+
+      <FadeIn>
+        <h2>04 — The Cost of Fairness</h2>
+        <p>Operating cost per drone scales steeply with distance. Fuel and wear are linear; breakdowns are roughly quadratic. A drone serving Downtown (1.5 miles) costs about <em>$27/hour</em> to run. A drone serving Southend (11 miles) costs <em>$137/hour</em>. Same drone, five times the cost.</p>
+        <p>If you give Southend equal service under the default operating model, it bleeds about <em>$518/hour</em>. The cost-rational thing for the platform to do is to stop serving it. Southend is also the poorest neighborhood in the city, with a median income of $22,000.</p>
+      </FadeIn>
+
+      <FadeIn className="narrative-section narrative-divider">
+        <div className="rule" />
+        <p>Below is the dispatch system's control panel. You get <em>100 priority points</em> to spread across four objectives. Every arrangement, the default included, makes a choice about who matters.</p>
+      </FadeIn>
+    </div>
+  );
+}
+
+function Slider({ label, value, onChange, colorClass, min = 0, max = 100 }) {
+  const inputId = `slider-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+  const fill = `${(value / max) * 100}%`;
+  return (
+    <div className="slider-group">
+      <div className="slider-header">
+        <label className="slider-label" htmlFor={inputId}>{label}</label>
+        <span className="slider-value">{value}</span>
+      </div>
+      <input
+        id={inputId}
+        type="range"
+        min={min} max={max} value={value}
+        onChange={e => onChange(parseInt(e.target.value))}
+        className={colorClass}
+        style={{ '--fill': fill }}
+      />
+    </div>
+  );
+}
+
+function NeighborhoodCard({ data, maxWait }) {
+  const waitColor = data.abandoned ? '#f87171' : getWaitColor(data.avgWait, maxWait);
+  const serviceWidth = `${Math.min(data.serviceRate * 100, 100)}%`;
+  const borderColor = data.abandoned ? '#f8717140' : `${data.color}20`;
+  return (
+    <div className="neighborhood" style={{ background: `${data.color}08`, borderColor }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: data.abandoned ? '#f87171' : data.color, borderRadius: '8px 8px 0 0' }} />
+      <div>
+        <div className="name">{data.name}</div>
+        <div className="traits">
+          {(data.density/1000).toFixed(1)}k/mi² · ${(data.income/1000).toFixed(0)}k · {data.distance}mi
+        </div>
+      </div>
+      <div>
+        <div className="wait-display">
+          {data.abandoned ? (
+            <span className="wait-value" style={{ color: waitColor, fontSize: '0.95rem', letterSpacing: '0.04em' }}>NO SERVICE</span>
+          ) : (
+            <>
+              <span className="wait-value" style={{ color: waitColor }}>{data.avgWait.toFixed(1)}</span>
+              <span className="wait-unit">min avg</span>
+            </>
+          )}
+        </div>
+        <div className="service-bar-track">
+          <div className="service-bar-fill" style={{ width: serviceWidth, background: data.color }} />
+        </div>
+        <div className="deliveries">{data.deliveriesPerHour}/hr · {data.allocation} agents · <span style={{ color: data.profitPerHour >= 0 ? '#34d399' : '#f87171' }}>{data.profitPerHour >= 0 ? '+$' : '-$'}{Math.abs(data.profitPerHour).toFixed(0)}/hr</span></div>
+      </div>
+      {data.bio && <div className="bio-tooltip">{data.bio}</div>}
+    </div>
+  );
+}
+
+function BarChart({ results, maxWait }) {
+  const servedWaits = results.filter(r => !r.abandoned).map(r => r.avgWait);
+  const chartMax = Math.max(...servedWaits, 1);
+  return (
+    <div className="chart-container">
+      <h3>Average Wait Time by Neighborhood</h3>
+      <div className="bar-chart">
+        {results.map(r => {
+          if (r.abandoned) {
+            return (
+              <div key={r.id} className="bar-col">
+                <div className="bar-value" style={{ color: '#f87171' }}>—</div>
+                <div className="bar-track" style={{
+                  height: '100%',
+                  background: 'repeating-linear-gradient(45deg, #f8717130, #f8717130 4px, transparent 4px, transparent 8px)',
+                  border: '1px dashed #f8717160',
+                  opacity: 0.9,
+                }} />
+                <div className="bar-name" style={{ color: '#f87171' }}>{r.name.split(' ')[0]}</div>
+              </div>
+            );
+          }
+          const height = `${Math.max((r.avgWait / chartMax) * 100, 4)}%`;
+          const color = getWaitColor(r.avgWait, maxWait);
+          return (
+            <div key={r.id} className="bar-col">
+              <div className="bar-value">{r.avgWait.toFixed(1)}m</div>
+              <div className="bar-track" style={{ height, background: color, opacity: 0.85 }} />
+              <div className="bar-name">{r.name.split(' ')[0]}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const PRESET_METRICS = PRESETS.map(p => simulate(p.weights));
+
+function App() {
+  const [weights, setWeights] = useState({ speed: 47, throughput: 29, profit: 18, equity: 6 });
+  const [activePreset, setActivePreset] = useState(null);
+
+  const setWeight = useCallback((key, rawVal) => {
+    setWeights(prev => {
+      const newVal = Math.max(0, Math.min(PRIORITY_BUDGET, Math.round(rawVal)));
+      if (newVal === prev[key]) return prev;
+      const otherKeys = ['speed', 'throughput', 'profit', 'equity'].filter(k => k !== key);
+      const otherSum = otherKeys.reduce((s, k) => s + prev[k], 0);
+      const next = { ...prev, [key]: newVal };
+      const target = PRIORITY_BUDGET - newVal;
+      if (otherSum === 0) {
+        if (target === 0) return next;
+        const each = Math.floor(target / otherKeys.length);
+        let rem = target - each * otherKeys.length;
+        otherKeys.forEach(k => { next[k] = each + (rem > 0 ? 1 : 0); if (rem > 0) rem--; });
+        return next;
+      }
+      const scale = target / otherSum;
+      let used = 0;
+      const items = otherKeys.map(k => {
+        const exact = prev[k] * scale;
+        const fl = Math.floor(exact);
+        used += fl;
+        return { k, fl, frac: exact - fl };
+      });
+      let rem = target - used;
+      items.sort((a, b) => b.frac - a.frac);
+      items.forEach(i => { next[i.k] = i.fl + (rem > 0 ? 1 : 0); if (rem > 0) rem--; });
+      return next;
+    });
+    setActivePreset(null);
+  }, []);
+
+  const applyPreset = useCallback((preset, idx) => {
+    setWeights({ ...preset.weights });
+    setActivePreset(idx);
+  }, []);
+
+  const sim = useMemo(() => simulate(weights), [weights]);
+  const insight = useMemo(() => getInsight(weights, sim, sim.results), [weights, sim]);
+
+  return (
+    <>
+    <NarrativeIntro />
+    <div className="app">
+      <div className="header">
+        <div className="header-left">
+          <h1><span>//</span> dispatch equity simulator</h1>
+          <p>Move the sliders to see how priority weights change which neighborhoods the fleet serves and which it skips.</p>
+        </div>
+        <div className="header-right">
+          <div className="disparity-badge">
+            <span className="label">Wait Inequality{sim.abandonedCount > 0 ? ' (served)' : ''}</span>
+            <span className="value" style={{ color: getInequalityColor(sim.inequality) }}>
+              {(sim.inequality * 100).toFixed(1)}%
+            </span>
+            {sim.abandonedCount > 0 && (
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.65rem', color: 'var(--accent-red)', marginTop: 4 }}>
+                + {sim.abandonedCount} abandoned
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="layout">
+        <div className="controls">
+          <div className="control-card">
+            <h3>Priority Budget · {PRIORITY_BUDGET} pts</h3>
+            <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', marginBottom: 14, background: 'var(--border)' }}>
+              <div style={{ width: `${weights.speed}%`, background: 'var(--accent-blue)', transition: 'width 0.2s' }} />
+              <div style={{ width: `${weights.throughput}%`, background: 'var(--accent-green)', transition: 'width 0.2s' }} />
+              <div style={{ width: `${weights.profit}%`, background: 'var(--accent-amber)', transition: 'width 0.2s' }} />
+              <div style={{ width: `${weights.equity}%`, background: 'var(--accent-purple)', transition: 'width 0.2s' }} />
+            </div>
+            <Slider label="Response Speed" value={weights.speed} onChange={v => setWeight('speed', v)} colorClass="slider-blue" />
+            <Slider label="Throughput" value={weights.throughput} onChange={v => setWeight('throughput', v)} colorClass="slider-green" />
+            <Slider label="Profit" value={weights.profit} onChange={v => setWeight('profit', v)} colorClass="slider-amber" />
+            <Slider label="Equity" value={weights.equity} onChange={v => setWeight('equity', v)} colorClass="slider-purple" />
+          </div>
+
+          <div className="control-card">
+            <h3>Presets</h3>
+            <div className="presets">
+              {PRESETS.map((p, i) => {
+                const m = PRESET_METRICS[i];
+                const profitColor = m.totalProfit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                return (
+                  <button key={i} className={`preset-btn ${activePreset === i ? 'active' : ''}`} onClick={() => applyPreset(p, i)}>
+                    <span className="preset-dot" style={{ background: p.color }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }}>{p.name}</div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 1 }}>{p.desc}</div>
+                      <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: '2px 8px' }}>
+                        <span style={{ color: profitColor }}>${Math.round(m.totalProfit)}/hr</span>
+                        <span>·</span>
+                        <span>{m.avgWait.toFixed(1)}m wait</span>
+                        <span>·</span>
+                        <span>{(m.inequality * 100).toFixed(0)}% gini</span>
+                        <span>·</span>
+                        <span style={{ color: m.abandonedCount > 0 ? 'var(--accent-red)' : 'var(--text-muted)' }}>
+                          {m.abandonedCount} abandoned
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="control-card" style={{ borderLeftColor: 'var(--accent-cyan)', borderLeftWidth: 2 }}>
+            <h3>Fleet Status</h3>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              <div>Agents: <span style={{ color: 'var(--text-primary)' }}>{FLEET_SIZE}</span></div>
+              <div>Neighborhoods: <span style={{ color: 'var(--text-primary)' }}>{NEIGHBORHOODS.length}</span></div>
+              <div>Total Demand: <span style={{ color: 'var(--text-primary)' }}>{NEIGHBORHOODS.reduce((s,n) => s + n.baseDemand, 0)}/hr</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="main-content">
+          <div className="stats-row">
+            <div className="stat-card">
+              <div className="stat-label">Avg Wait (served)</div>
+              <div className="stat-value" style={{ color: getWaitColor(sim.avgWait, MAX_WAIT) }}>{sim.avgWait.toFixed(1)}<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> min</span></div>
+              <div className="stat-sub">Demand-weighted across served neighborhoods</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Throughput</div>
+              <div className="stat-value">{sim.totalDeliveries.toFixed(0)}<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> /hr</span></div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Net Profit</div>
+              <div className="stat-value" style={{ color: sim.totalProfit >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>${sim.totalProfit.toFixed(0)}<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> /hr</span></div>
+              <div className="stat-sub">Rev ${sim.totalRevenue.toFixed(0)} − Costs ${sim.totalCost.toFixed(0)}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Worst Wait (served)</div>
+              <div className="stat-value" style={{ color: 'var(--accent-red)' }}>{sim.worstServedWait.toFixed(1)}<span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}> min</span></div>
+              <div className="stat-sub" style={{ color: sim.abandonedCount > 0 ? 'var(--accent-red)' : 'var(--text-secondary)' }}>
+                {sim.abandonedCount === 0 ? 'No abandoned neighborhoods' : `${sim.abandonedCount} abandoned: ${sim.abandonedNames.join(', ')}`}
+              </div>
+            </div>
+          </div>
+
+          <div className="city-container">
+            <h3>Neighborhood Service Map — Agent Allocation & Wait Times</h3>
+            <div className="city-grid">
+              {sim.results.map(r => (
+                <NeighborhoodCard key={r.id} data={r} maxWait={sim.maxWait} />
+              ))}
+            </div>
+          </div>
+
+          <BarChart results={sim.results} maxWait={sim.maxWait} />
+
+          <div className="insight-panel">
+            <div className="insight-label">Ethical Analysis — {insight.framework}</div>
+            <p>{insight.text}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="footer">
+        <p>Evan Kusa · Ethics of Autonomous Systems — Duke University — Spring 2026</p>
+        <p>Bias taxonomy: <a href="https://doi.org/10.1145/3465416.3483305" target="_blank" rel="noopener">Suresh & Guttag (2021)</a></p>
+      </div>
+    </div>
+    </>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
